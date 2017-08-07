@@ -27,7 +27,7 @@ class LibagerCommand extends Command
             ->setDescription('Test out features of the php api client.')
             ->addArgument('subdomain', InputArgument::REQUIRED)
             ->addArgument('username', InputArgument::REQUIRED)
-            ->addArgument('password', InputArgument::REQUIRED);
+            ->addArgument('token', InputArgument::REQUIRED);
     }
 
     /**
@@ -50,7 +50,7 @@ class LibagerCommand extends Command
         $client = new HttpClient($input->getArgument('subdomain'));
         $client->setAuth('basic', [
             'username' => $input->getArgument('username'),
-            'token' => $input->getArgument('password')
+            'token' => $input->getArgument('token')
         ]);
 
         $shell->setScopeVariables(['ticket' => 'karl']);

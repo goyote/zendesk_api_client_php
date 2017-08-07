@@ -21,17 +21,9 @@ class DocMethodMatcher extends AbstractContextAwareMatcher
     {
         $input = $this->getInput($tokens);
 
-        $firstToken = array_pop($tokens);
-        if (self::tokenIs($firstToken, self::T_STRING)) {
-            // second token is the object operator
-            array_pop($tokens);
-        }
-        $objectToken = array_pop($tokens);
-
-        if (! is_array($objectToken)) {
-            return [];
-        }
-        $objectName = str_replace('$', '', $objectToken[1]);
+        array_shift($tokens);
+        $clientToken = array_shift($tokens);
+        $objectName = str_replace('$', '', $clientToken[1]);
 
         try {
             $object = $this->getVariable($objectName);
@@ -39,12 +31,24 @@ class DocMethodMatcher extends AbstractContextAwareMatcher
             return [];
         }
 
-        return array_filter(
-            array_keys($object->getValidSubResources()),
-            function ($var) use ($input) {
-                return AbstractMatcher::startsWith($input, $var);
+        do {
+            $subresourceToken = array_shift($tokens);
+            if (self::tokenIs($subresourceToken, self::T_STRING)) {
+                if ($subresourceToken[1] === $input) {
+                    return $this->searchValidSubResources($object, $input);
+                } elseif (array_key_exists($subresourceToken[1], $object->getValidSubResources())) {
+                    $object = $object->{$subresourceToken[1]}();
+                } else {
+                    return [];
+                }
             }
-        );
+        } while ($tokens);
+
+        if ($object && !$input) {
+            return $this->searchValidSubResources($object);
+        }
+
+        return [];
     }
 
     /**
@@ -62,5 +66,20 @@ class DocMethodMatcher extends AbstractContextAwareMatcher
         }
 
         return false;
+    }
+
+    private function searchValidSubResources($object, $input = '')
+    {
+        return array_reduce(
+            array_keys($object->getValidSubResources()),
+            function ($acc, $var) use ($input) {
+                if (AbstractMatcher::startsWith($input, $var)) {
+                    $acc[] = "$var()";
+                }
+
+                return $acc;
+            },
+            []
+        );
     }
 }
